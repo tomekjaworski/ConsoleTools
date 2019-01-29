@@ -1,3 +1,6 @@
+#if !defined(__NEW_CONIO_H_)
+#define __NEW_CONIO_H_
+
 #include <Windows.h>
 
 static HANDLE houtput = NULL;
@@ -28,7 +31,7 @@ static int current_background = 0;
 #define FG_LGRAY	FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE
 
 //
-// kolory t≥a - ciemne
+// kolory t≈Ça - ciemne
 //
 #define BG_BLACK	0
 #define BG_BLUE		BACKGROUND_BLUE
@@ -40,7 +43,7 @@ static int current_background = 0;
 #define BG_WHITE	BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE
 
 //
-// kolory t≥a - jasne
+// kolory t≈Ça - jasne
 //
 #define BG_LBLUE	BACKGROUND_INTENSITY | BACKGROUND_BLUE
 #define BG_LGREEN	BACKGROUND_INTENSITY | BACKGROUND_GREEN
@@ -153,4 +156,7 @@ static void sleep(int time_ms)
 {
 	Sleep(time_ms);
 }
+
+#endif // __NEW_CONIO_H_
+
 
