@@ -1,3 +1,7 @@
+/*
+ * Simple Console Tools for Windows (WinAPI)
+ * Author: Tomasz Jaworski, 2017-2019
+ */
 #if !defined(__NEW_CONIO_H_)
 #define __NEW_CONIO_H_
 
