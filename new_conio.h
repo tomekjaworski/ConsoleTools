@@ -84,28 +84,64 @@ static int current_background = 0;
 #define LIGHT_AQUA		FOREGROUND_INTENSITY | FOREGROUND_GREEN | FOREGROUND_BLUE
 #define BRIGHT_WHITE		FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE
 
-static void set_foreground(int fore_color);
-static void set_background(int back_color);
+//
+// Funkcje
+//
+
+
+static void set_screen_size(int width, int height);
+
+static void set_cursor_position(COORD pos);
+static COORD get_cursor_position(void);
+static void set_cursor_visibility(int visible);
+static void gotoxy(int x, int y);
 static void hide_cursor(void);
 static void show_cursor(void);
-static void set_cursor_visibility(int visible);
-static void set_screen_size(int width, int height);
+
+static void set_foreground(int fore_color);
+static void set_background(int back_color);
+
+static int read_key(DWORD milliseconds);
+static int cwprintf(int color, const wchar_t* format, ...);
+static int cprintf(int color, const char* format, ...);
+static void wait(const wchar_t* msg);
+
 static void sleep(int time_ms);
 static int get_time(void);
-static void gotoxy(int x, int y);
-static int read_key(DWORD milliseconds);
 
+//
+//
+// #######################################################################################
+//
+//
+
+int __cdecl __conio_init(void) {
+	houtput = GetStdHandle(STD_OUTPUT_HANDLE);
+	hinput = GetStdHandle(STD_INPUT_HANDLE);
+
+	set_background(BLACK);
+	set_foreground(WHITE);
+
+	gotoxy(0, 0);
+
+	return 0;
+}
+
+#pragma section(".CRT$XIC1",long,read)
+__declspec(allocate(".CRT$XIC1")) static int(__cdecl *pinit1[])(void) = { __conio_init };
+
+//
+// ============================================================
+// Funkcje inicjujące konsolę
+//
 
 static void set_screen_size(int width, int height)
 {
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 	SMALL_RECT r;
 	COORD      c;
-	houtput = GetStdHandle(STD_OUTPUT_HANDLE);
-	hinput = GetStdHandle(STD_INPUT_HANDLE);
 
-	set_background(BLACK);
-	set_foreground(WHITE);
+
 
 	BOOL ret = GetConsoleScreenBufferInfo(houtput, &csbi);
 	assert(ret && "GetConsoleScreenBufferInfo");
@@ -120,7 +156,27 @@ static void set_screen_size(int width, int height)
 	c.Y = height;
 	ret = SetConsoleScreenBufferSize(houtput, c);
 	assert(ret && "SetConsoleScreenBufferSize");
+}
 
+//
+// ============================================================
+// Funkcje kursorem (położenie, widzialnośc, itd)
+//
+
+static COORD get_cursor_position(void)
+{
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+
+	BOOL ret = GetConsoleScreenBufferInfo(houtput, &csbi);
+	assert(ret && "GetConsoleScreenBufferInfo");
+
+	return csbi.dwCursorPosition;
+}
+
+static void set_cursor_position(COORD pos)
+{
+	BOOL ret = SetConsoleCursorPosition(houtput, pos);
+	assert(ret && "SetConsoleCursorPosition");
 }
 
 static void gotoxy(int x, int y)
@@ -151,6 +207,13 @@ static void hide_cursor(void)
 	set_cursor_visibility(0);
 }
 
+
+//
+// ============================================================
+// Funkcje ustawiania koloru znaku i tła
+//
+
+
 static void set_background(int back_color)
 {
 	current_background = back_color & 0x0F;
@@ -161,8 +224,16 @@ static void set_background(int back_color)
 static void set_foreground(int fore_color)
 {
 	current_foreground = (fore_color & 0x0F);
-	SetConsoleTextAttribute(houtput, (current_background << 4) | current_foreground);
+	BOOL ret = SetConsoleTextAttribute(houtput, (current_background << 4) | current_foreground);
+	assert(ret && "SetConsoleTextAttribute");
 }
+
+
+//
+// ============================================================
+// Funkcja czasu
+//
+
 
 static int get_time(void)
 {
@@ -174,6 +245,10 @@ static void sleep(int time_ms)
 	Sleep(time_ms);
 }
 
+//
+// ============================================================
+// Funkcje wejścia/wyjścia
+//
 
 
 static int read_key(DWORD milliseconds)
@@ -203,9 +278,58 @@ static int read_key(DWORD milliseconds)
 		if (record.Event.KeyEvent.bKeyDown)
 			return record.Event.KeyEvent.wVirtualKeyCode;
 	}
-
 }
 
+
+
+void wait(const wchar_t* msg)
+{
+	if (msg)
+		wprintf(L"Nacisnij dowolny klawisz (%s)...\n", msg);
+	else
+		wprintf(L"Nacisnij dowolny klawisz...\n");
+	DWORD a = GetTickCount();
+	DWORD delta;
+	do {
+		getchar();
+		delta = GetTickCount() - a;
+	} while (delta < 10);
+}
+
+
+static int cwprintf(int color, const wchar_t* format, ...)
+{
+	va_list ap;
+	va_start(ap, format);
+
+	BOOL ret = SetConsoleTextAttribute(houtput, color);
+	assert(ret && "SetConsoleTextAttribute");
+
+	int chars = vwprintf(format, ap);
+
+	ret = SetConsoleTextAttribute(houtput, (current_background << 4) | current_foreground);
+	assert(ret && "SetConsoleTextAttribute");
+
+	return chars;
+}
+
+
+
+static int cprintf(int color, const char* format, ...)
+{
+	va_list ap;
+	va_start(ap, format);
+	
+	BOOL ret = SetConsoleTextAttribute(houtput, color);
+	assert(ret && "SetConsoleTextAttribute");
+
+	int chars = vprintf(format, ap);
+
+	ret = SetConsoleTextAttribute(houtput, (current_background << 4) | current_foreground);
+	assert(ret && "SetConsoleTextAttribute");
+
+	return chars;
+}
 
 #endif // __NEW_CONIO_H_
 
