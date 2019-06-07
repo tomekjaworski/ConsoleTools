@@ -115,7 +115,7 @@ static int get_time(void);
 //
 //
 
-int __cdecl __conio_init(void) {
+static int __cdecl __conio_init(void) {
 	houtput = GetStdHandle(STD_OUTPUT_HANDLE);
 	hinput = GetStdHandle(STD_INPUT_HANDLE);
 
