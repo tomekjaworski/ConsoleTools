@@ -89,7 +89,8 @@ static int current_background = 0;
 //
 
 
-static void set_screen_size(int width, int height);
+static void set_screen_size(int screen_width, int screen_height);
+static void set_screen_buffer_size(int screen_width, int screen_height, int buffer_height);
 
 static void set_cursor_position(COORD pos);
 static COORD get_cursor_position(void);
@@ -135,27 +136,46 @@ __declspec(allocate(".CRT$XIC1")) static int(__cdecl *pinit1[])(void) = { __coni
 // Funkcje inicjujące konsolę
 //
 
-static void set_screen_size(int width, int height)
+static void set_screen_size(int screen_width, int screen_height)
+{
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+	SMALL_RECT r;
+	COORD      c;
+	   
+	BOOL ret = GetConsoleScreenBufferInfo(houtput, &csbi);
+	assert(ret && "GetConsoleScreenBufferInfo");
+
+	c.X = screen_width;
+	c.Y = screen_height;
+	ret = SetConsoleScreenBufferSize(houtput, c);
+	assert(ret && "SetConsoleScreenBufferSize");
+
+	r.Left = r.Top = 0;
+	r.Right = screen_width - 1;
+	r.Bottom = screen_height - 1;
+	ret = SetConsoleWindowInfo(houtput, TRUE, &r);
+	assert(ret && "SetConsoleWindowInfo");
+}
+
+static void set_screen_buffer_size(int screen_width, int screen_height, int buffer_height)
 {
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 	SMALL_RECT r;
 	COORD      c;
 
-
-
 	BOOL ret = GetConsoleScreenBufferInfo(houtput, &csbi);
 	assert(ret && "GetConsoleScreenBufferInfo");
 
-	r.Left = r.Top = 0;
-	r.Right = width - 1;
-	r.Bottom = height - 1;
-	ret = SetConsoleWindowInfo(houtput, TRUE, &r);
-	assert(ret && "SetConsoleWindowInfo");
-
-	c.X = width;
-	c.Y = height;
+	c.X = screen_width;
+	c.Y = buffer_height;
 	ret = SetConsoleScreenBufferSize(houtput, c);
 	assert(ret && "SetConsoleScreenBufferSize");
+
+	r.Left = r.Top = 0;
+	r.Right = screen_width - 1;
+	r.Bottom = screen_height - 1;
+	ret = SetConsoleWindowInfo(houtput, TRUE, &r);
+	assert(ret && "SetConsoleWindowInfo");
 }
 
 //
