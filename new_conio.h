@@ -8,11 +8,15 @@
 #include <Windows.h>
 #include <assert.h>
 
-static HANDLE houtput = NULL;
-static HANDLE hinput = NULL;
+__declspec(selectany) extern struct __conio_t {
+	HANDLE houtput;
+	HANDLE hinput;
 
-static int current_foreground = 0;
-static int current_background = 0;
+	int current_foreground;
+	int current_background;
+
+	int initialized;
+} __conio = { 0 };
 
 //
 // kolory znaku - ciemne
@@ -116,9 +120,20 @@ static int get_time(void);
 //
 //
 
-static int __cdecl __conio_init(void) {
-	houtput = GetStdHandle(STD_OUTPUT_HANDLE);
-	hinput = GetStdHandle(STD_INPUT_HANDLE);
+static int __conio_init(void) {
+
+	if (__conio.initialized)
+		return 0;
+
+	__conio.houtput = GetStdHandle(STD_OUTPUT_HANDLE);
+	__conio.hinput = GetStdHandle(STD_INPUT_HANDLE);
+
+	// Ok, inicjalizacja zakończona
+	__conio.initialized = 1;
+
+	//
+	// Od tego momentu można używać funkcji konsolowych do zainicjowania jej stanu
+	//
 
 	set_background(BLACK);
 	set_foreground(WHITE);
@@ -128,9 +143,6 @@ static int __cdecl __conio_init(void) {
 	return 0;
 }
 
-#pragma section(".CRT$XIC1",long,read)
-__declspec(allocate(".CRT$XIC1")) static int(__cdecl *pinit1[])(void) = { __conio_init };
-
 //
 // ============================================================
 // Funkcje inicjujące konsolę
@@ -138,43 +150,47 @@ __declspec(allocate(".CRT$XIC1")) static int(__cdecl *pinit1[])(void) = { __coni
 
 static void set_screen_size(int screen_width, int screen_height)
 {
+	__conio_init();
+
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 	SMALL_RECT r;
 	COORD      c;
 	   
-	BOOL ret = GetConsoleScreenBufferInfo(houtput, &csbi);
+	BOOL ret = GetConsoleScreenBufferInfo(__conio.houtput, &csbi);
 	assert(ret && "GetConsoleScreenBufferInfo");
 
 	c.X = screen_width;
 	c.Y = screen_height;
-	ret = SetConsoleScreenBufferSize(houtput, c);
+	ret = SetConsoleScreenBufferSize(__conio.houtput, c);
 	assert(ret && "SetConsoleScreenBufferSize");
 
 	r.Left = r.Top = 0;
 	r.Right = screen_width - 1;
 	r.Bottom = screen_height - 1;
-	ret = SetConsoleWindowInfo(houtput, TRUE, &r);
+	ret = SetConsoleWindowInfo(__conio.houtput, TRUE, &r);
 	assert(ret && "SetConsoleWindowInfo");
 }
 
 static void set_screen_buffer_size(int screen_width, int screen_height, int buffer_height)
 {
+	__conio_init();
+
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 	SMALL_RECT r;
 	COORD      c;
 
-	BOOL ret = GetConsoleScreenBufferInfo(houtput, &csbi);
+	BOOL ret = GetConsoleScreenBufferInfo(__conio.houtput, &csbi);
 	assert(ret && "GetConsoleScreenBufferInfo");
 
 	c.X = screen_width;
 	c.Y = buffer_height;
-	ret = SetConsoleScreenBufferSize(houtput, c);
+	ret = SetConsoleScreenBufferSize(__conio.houtput, c);
 	assert(ret && "SetConsoleScreenBufferSize");
 
 	r.Left = r.Top = 0;
 	r.Right = screen_width - 1;
 	r.Bottom = screen_height - 1;
-	ret = SetConsoleWindowInfo(houtput, TRUE, &r);
+	ret = SetConsoleWindowInfo(__conio.houtput, TRUE, &r);
 	assert(ret && "SetConsoleWindowInfo");
 }
 
@@ -185,9 +201,11 @@ static void set_screen_buffer_size(int screen_width, int screen_height, int buff
 
 static COORD get_cursor_position(void)
 {
+	__conio_init();
+
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 
-	BOOL ret = GetConsoleScreenBufferInfo(houtput, &csbi);
+	BOOL ret = GetConsoleScreenBufferInfo(__conio.houtput, &csbi);
 	assert(ret && "GetConsoleScreenBufferInfo");
 
 	return csbi.dwCursorPosition;
@@ -195,25 +213,31 @@ static COORD get_cursor_position(void)
 
 static void set_cursor_position(COORD pos)
 {
-	BOOL ret = SetConsoleCursorPosition(houtput, pos);
+	__conio_init();
+
+	BOOL ret = SetConsoleCursorPosition(__conio.houtput, pos);
 	assert(ret && "SetConsoleCursorPosition");
 }
 
 static void gotoxy(int x, int y)
 {
+	__conio_init();
+
 	COORD pos = { x, y };
-	BOOL ret = SetConsoleCursorPosition(houtput, pos);
+	BOOL ret = SetConsoleCursorPosition(__conio.houtput, pos);
 	assert(ret && "SetConsoleCursorPosition");
 }
 
 static void set_cursor_visibility(int visible)
 {
+	__conio_init();
+
 	CONSOLE_CURSOR_INFO cci;
-	BOOL ret = GetConsoleCursorInfo(houtput, &cci);
+	BOOL ret = GetConsoleCursorInfo(__conio.houtput, &cci);
 	assert(ret && "GetConsoleCursorInfo");
 	
 	cci.bVisible = visible;
-	ret = SetConsoleCursorInfo(houtput, &cci);
+	ret = SetConsoleCursorInfo(__conio.houtput, &cci);
 	assert(ret && "SetConsoleCursorInfo");
 }
 
@@ -236,15 +260,19 @@ static void hide_cursor(void)
 
 static void set_background(int back_color)
 {
-	current_background = back_color & 0x0F;
-	BOOL ret = SetConsoleTextAttribute(houtput, (current_background << 4) | current_foreground);
+	__conio_init();
+
+	__conio.current_background = back_color & 0x0F;
+	BOOL ret = SetConsoleTextAttribute(__conio.houtput, (__conio.current_background << 4) | __conio.current_foreground);
 	assert(ret && "SetConsoleTextAttribute");
 }
 
 static void set_foreground(int fore_color)
 {
-	current_foreground = (fore_color & 0x0F);
-	BOOL ret = SetConsoleTextAttribute(houtput, (current_background << 4) | current_foreground);
+	__conio_init();
+
+	__conio.current_foreground = (fore_color & 0x0F);
+	BOOL ret = SetConsoleTextAttribute(__conio.houtput, (__conio.current_background << 4) | __conio.current_foreground);
 	assert(ret && "SetConsoleTextAttribute");
 }
 
@@ -273,6 +301,8 @@ static void sleep(int time_ms)
 
 static int read_key(DWORD milliseconds)
 {
+	__conio_init();
+
 	ULONGLONG start_time = GetTickCount64();
 
 	INPUT_RECORD record;
@@ -284,7 +314,7 @@ static int read_key(DWORD milliseconds)
 		if (now - start_time > milliseconds)
 			return -1; // czas się skończył
 
-		DWORD result = WaitForSingleObject(hinput, 10);
+		DWORD result = WaitForSingleObject(__conio.hinput, 10);
 		if (result == WAIT_TIMEOUT)
 			continue;
 
@@ -319,15 +349,17 @@ void wait(const wchar_t* msg)
 
 static int cwprintf(int color, const wchar_t* format, ...)
 {
+	__conio_init();
+
 	va_list ap;
 	va_start(ap, format);
 
-	BOOL ret = SetConsoleTextAttribute(houtput, color);
+	BOOL ret = SetConsoleTextAttribute(__conio.houtput, color);
 	assert(ret && "SetConsoleTextAttribute");
 
 	int chars = vwprintf(format, ap);
 
-	ret = SetConsoleTextAttribute(houtput, (current_background << 4) | current_foreground);
+	ret = SetConsoleTextAttribute(__conio.houtput, (__conio.current_background << 4) | __conio.current_foreground);
 	assert(ret && "SetConsoleTextAttribute");
 
 	return chars;
@@ -337,15 +369,17 @@ static int cwprintf(int color, const wchar_t* format, ...)
 
 static int cprintf(int color, const char* format, ...)
 {
+	__conio_init();
+
 	va_list ap;
 	va_start(ap, format);
 	
-	BOOL ret = SetConsoleTextAttribute(houtput, color);
+	BOOL ret = SetConsoleTextAttribute(__conio.houtput, color);
 	assert(ret && "SetConsoleTextAttribute");
 
 	int chars = vprintf(format, ap);
 
-	ret = SetConsoleTextAttribute(houtput, (current_background << 4) | current_foreground);
+	ret = SetConsoleTextAttribute(__conio.houtput, (__conio.current_background << 4) | __conio.current_foreground);
 	assert(ret && "SetConsoleTextAttribute");
 
 	return chars;
