@@ -7,6 +7,7 @@
 
 #include <Windows.h>
 #include <assert.h>
+#include <stdio.h>
 
 __declspec(selectany) extern struct __conio_t {
 	HANDLE houtput;
