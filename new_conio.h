@@ -224,7 +224,7 @@ static void gotoxy(int x, int y)
 {
 	__conio_init();
 
-	COORD pos = { x, y };
+	COORD pos = { (SHORT)x, (SHORT)y };
 	BOOL ret = SetConsoleCursorPosition(__conio.houtput, pos);
 	assert(ret && "SetConsoleCursorPosition");
 }
