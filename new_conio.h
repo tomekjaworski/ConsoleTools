@@ -336,9 +336,9 @@ static int read_key(DWORD milliseconds)
 void wait(const wchar_t* msg)
 {
 	if (msg)
-		wprintf(L"Nacisnij dowolny klawisz (%s)...\n", msg);
+		wprintf(L"Nacisnij ENTER aby kontynuować (%s)...\n", msg);
 	else
-		wprintf(L"Nacisnij dowolny klawisz...\n");
+		wprintf(L"Nacisnij ENTER aby kontynuować...\n");
 	DWORD a = GetTickCount();
 	DWORD delta;
 	do {
