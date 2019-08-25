@@ -139,7 +139,7 @@ static int __conio_init(void) {
 	set_background(BLACK);
 	set_foreground(WHITE);
 
-	gotoxy(0, 0);
+	//gotoxy(0, 0);
 
 	return 0;
 }
