@@ -8,6 +8,7 @@
 #include <Windows.h>
 #include <assert.h>
 #include <stdio.h>
+#include <sal.h>
 
 __declspec(selectany) extern struct __conio_t {
 	HANDLE houtput;
@@ -108,8 +109,8 @@ static void set_foreground(int fore_color);
 static void set_background(int back_color);
 
 static int read_key(DWORD milliseconds);
-static int cwprintf(int color, const wchar_t* format, ...);
-static int cprintf(int color, const char* format, ...);
+static int cwprintf(int color, _In_z_ _Printf_format_string_ const wchar_t* _Format, ...);
+static int cprintf(int color, _In_z_ _Printf_format_string_ const char* _Format, ...);
 static void wait(const wchar_t* msg);
 
 static void sleep(int time_ms);
@@ -348,17 +349,18 @@ void wait(const wchar_t* msg)
 }
 
 
-static int cwprintf(int color, const wchar_t* format, ...)
+static int cwprintf(int color, 
+	_In_z_ _Printf_format_string_ const wchar_t* _Format, ...)
 {
 	__conio_init();
 
 	va_list ap;
-	va_start(ap, format);
+	va_start(ap, _Format);
 
 	BOOL ret = SetConsoleTextAttribute(__conio.houtput, color);
 	assert(ret && "SetConsoleTextAttribute");
 
-	int chars = vwprintf(format, ap);
+	int chars = vwprintf(_Format, ap);
 
 	ret = SetConsoleTextAttribute(__conio.houtput, (__conio.current_background << 4) | __conio.current_foreground);
 	assert(ret && "SetConsoleTextAttribute");
@@ -368,17 +370,17 @@ static int cwprintf(int color, const wchar_t* format, ...)
 
 
 
-static int cprintf(int color, const char* format, ...)
+static int cprintf(int color, const char* _Format, ...)
 {
 	__conio_init();
 
 	va_list ap;
-	va_start(ap, format);
+	va_start(ap, _Format);
 	
 	BOOL ret = SetConsoleTextAttribute(__conio.houtput, color);
 	assert(ret && "SetConsoleTextAttribute");
 
-	int chars = vprintf(format, ap);
+	int chars = vprintf(_Format, ap);
 
 	ret = SetConsoleTextAttribute(__conio.houtput, (__conio.current_background << 4) | __conio.current_foreground);
 	assert(ret && "SetConsoleTextAttribute");
